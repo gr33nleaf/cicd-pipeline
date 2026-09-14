@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: random-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: random-app
+  template:
+    metadata:
+      labels:
+        app: random-app
+    spec:
+      containers:
+      - name: random-app
+        image: ghcr.io/gr33nleaf/cicd-pipeline:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "500m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 15
