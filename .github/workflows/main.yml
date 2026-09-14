@@ -44,6 +44,9 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: checkout code
         uses: actions/checkout@v4
@@ -61,6 +64,7 @@ jobs:
             docker push ghcr.io/${{ github.repository }}:${{ github.sha}}
 
       - name: set up kind cluster
+        id: kind
         uses: helm/kind-action@v1
 
       - name: load image into kind
@@ -85,5 +89,5 @@ jobs:
           fail_action: false
 
       - name: rollback on failure
-        if: failure()
+        if: failure() && steps.kind.outcome == 'success'
         run: kubectl rollout undo deployment/random-app
