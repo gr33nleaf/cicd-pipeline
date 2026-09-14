@@ -92,7 +92,8 @@ jobs:
         with:
           target: 'http://localhost:8000'
           fail_action: false
+          allow_issue_writing: false
 
       - name: rollback on failure
         if: failure() && steps.kind.outcome == 'success'
-        run: kubectl rollout undo deployment/random-app
+        run: kubectl rollout undo deployment/random-app || true
