@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: run unit tests
-        run: pytest tests/ -v
+        run: PYTHONPATH=. pytest tests/ -v
 
       - name: sonarcloud scan
         uses: SonarSource/sonarcloud-github-action@master
