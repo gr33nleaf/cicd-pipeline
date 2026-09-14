@@ -77,9 +77,9 @@ jobs:
 
       - name: deploy to kubernetes
         run: |
+          sed -i "s|image: .*cicd-pipeline.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yml
           kubectl apply -f k8s/
-          kubectl set image deployment/random-app random-app=ghcr.io/${{ github.repository }}:${{ github.sha }}
-          kubectl rollout status deployment/random-app --timeout=60s
+          kubectl rollout status deployment/random-app --timeout=120s
 
       - name: expose service for DAST
         run: kubectl port-forward svc/random-app-service 8000:8000 &

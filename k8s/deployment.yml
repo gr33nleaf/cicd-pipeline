@@ -15,6 +15,7 @@ spec:
       containers:
       - name: random-app
         image: ghcr.io/gr33nleaf/cicd-pipeline:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
         resources:
