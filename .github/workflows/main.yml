@@ -21,14 +21,20 @@ jobs:
       - name: install dependencies
         run: pip install -r requirements.txt
 
-      - name: run unit tests
-        run: PYTHONPATH=. pytest tests/ -v
+      - name: run unit tests with coverage
+        run: |
+          PYTHONPATH=. pytest tests/ --ignore=tests/test_integration.py -v \
+            --cov=app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term
 
       - name: sonarcloud scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.python.coverage.reportPaths=coverage.xml
 
       - name: trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
@@ -51,6 +57,9 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v4
 
+      - name: record pipeline start
+        run: echo "PIPELINE_START=$(date +%s)" >> $GITHUB_ENV
+
       - name: login to github container registry
         uses: docker/login-action@v3
         with:
@@ -60,8 +69,8 @@ jobs:
 
       - name: build and push docker image
         run: |
-            docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
-            docker push ghcr.io/${{ github.repository }}:${{ github.sha}}
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
+          docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: set up kind cluster
         id: kind
@@ -80,12 +89,16 @@ jobs:
           sed -i "s|image: .*cicd-pipeline.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yml
           kubectl apply -f k8s/
           kubectl rollout status deployment/random-app --timeout=120s
+          echo "DEPLOY_END=$(date +%s)" >> $GITHUB_ENV
 
       - name: expose service for DAST
         run: kubectl port-forward svc/random-app-service 8000:8000 &
 
       - name: wait for service
         run: sleep 5
+
+      - name: integration test
+        run: PYTHONPATH=. pytest tests/test_integration.py -v
 
       - name: OWASP ZAP DAST scan
         uses: zaproxy/action-baseline@v0.14.0
@@ -104,4 +117,37 @@ jobs:
 
       - name: rollback on failure
         if: failure() && steps.kind.outcome == 'success'
-        run: kubectl rollout undo deployment/random-app || true
+        run: |
+          ROLLBACK_START=$(date +%s)
+          kubectl rollout undo deployment/random-app || true
+          ROLLBACK_END=$(date +%s)
+          echo "TIME_TO_RESTORE=$((ROLLBACK_END - ROLLBACK_START))" >> $GITHUB_ENV
+
+      - name: DORA metrics summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "           DORA Metrics Summary"
+          echo "=========================================="
+
+          # 1. Lead Time for Changes (Commit → End of Pipeline)
+          COMMIT_TIME=$(git log -1 --format="%ct")
+          NOW=$(date +%s)
+          LEAD_TIME=$((NOW - COMMIT_TIME))
+          echo "Lead Time for Changes : $((LEAD_TIME / 60))m $((LEAD_TIME % 60))s"
+
+          # 2. Deployment Frequency
+          echo "Deployment Frequency  : 1 deployment ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          echo "  Branch              : ${{ github.ref_name }}"
+          echo "  Commit              : ${{ github.sha }}"
+
+          # 3. Change Failure Rate + 4. Time to Restore
+          if [ -n "${TIME_TO_RESTORE}" ]; then
+            echo "Change Failure Rate   : FAILED → Rollback executed"
+            echo "Time to Restore       : ${TIME_TO_RESTORE}s (automatic rollback)"
+          else
+            echo "Change Failure Rate   : SUCCESS (no rollback needed)"
+            echo "Time to Restore       : N/A"
+          fi
+
+          echo "=========================================="
