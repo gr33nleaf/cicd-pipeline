@@ -4,17 +4,27 @@ on:
   push:
     branches: ['**']
 
+permissions: {}  # alle Permissions gesperrt by default
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write        # SonarCloud Check-Status
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
           fetch-depth: 0
 
+      - name: gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2  # SHA nach erstem Run aus Logs pinnen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: set up python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.12'
 
@@ -29,7 +39,7 @@ jobs:
             --cov-report=term
 
       - name: sonarcloud scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e  # master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -37,7 +47,7 @@ jobs:
           args: -Dsonar.python.coverage.reportPaths=coverage.xml
 
       - name: trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297  # master
         with:
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
@@ -52,16 +62,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
-      packages: write
+      packages: write      # ghcr.io push
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: record pipeline start
         run: echo "PIPELINE_START=$(date +%s)" >> $GITHUB_ENV
 
       - name: login to github container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -104,7 +114,7 @@ jobs:
         run: PYTHONPATH=. pytest tests/test_integration.py -v
 
       - name: OWASP ZAP DAST scan
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed  # v0.14.0
         with:
           target: 'http://localhost:8000'
           fail_action: false
@@ -133,18 +143,15 @@ jobs:
           echo "           DORA Metrics Summary"
           echo "=========================================="
 
-          # 1. Lead Time for Changes (Commit → End of Pipeline)
           COMMIT_TIME=$(git log -1 --format="%ct")
           NOW=$(date +%s)
           LEAD_TIME=$((NOW - COMMIT_TIME))
           echo "Lead Time for Changes : $((LEAD_TIME / 60))m $((LEAD_TIME % 60))s"
 
-          # 2. Deployment Frequency
           echo "Deployment Frequency  : 1 deployment ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
           echo "  Branch              : ${{ github.ref_name }}"
           echo "  Commit              : ${{ github.sha }}"
 
-          # 3. Change Failure Rate + 4. Time to Restore
           if [ -n "${TIME_TO_RESTORE}" ]; then
             echo "Change Failure Rate   : FAILED → Rollback executed"
             echo "Time to Restore       : ${TIME_TO_RESTORE}s (automatic rollback)"
