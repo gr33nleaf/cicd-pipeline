@@ -97,6 +97,9 @@ jobs:
       - name: wait for service
         run: sleep 5
 
+      - name: install test dependencies
+        run: pip install pytest httpx
+
       - name: integration test
         run: PYTHONPATH=. pytest tests/test_integration.py -v
 
