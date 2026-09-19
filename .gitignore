@@ -1,4 +1,8 @@
-__pychache__/
-*.__pyc
+__pycache__/
+*.pyc
 .env
 .pytest_cache/
+coverage.xml
+.venv/
+.scannerwork/
+htmlcov/
