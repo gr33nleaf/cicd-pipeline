@@ -3,6 +3,7 @@ name: CI/CD Pipeline - Study Case
 on:
   push:
     branches: ['**']
+  workflow_dispatch:
 
 permissions: {}  # alle Permissions gesperrt by default
 
