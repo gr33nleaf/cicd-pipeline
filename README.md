@@ -24,9 +24,10 @@ Proof of Concept: Automated CI/CD pipeline built with GitHub Actions, Kubernetes
 |---|---|
 | Container Registry | GHCR |
 | Orchestration | Kubernetes / Kind |
+| Metrics Server | metrics-server |
 | Integration Tests | pytest + httpx |
 | Dynamic Analysis (DAST) | OWASP ZAP |
-| Performance / Load Test | k6 |
+| Performance / Load Test | Gatling (Java DSL) |
 | Automatic Rollback | kubectl rollout undo |
 | DORA Metrics Summary | Shell / git |
 
@@ -39,7 +40,7 @@ Proof of Concept: Automated CI/CD pipeline built with GitHub Actions, Kubernetes
 - **Containerisation**: Docker
 - **Orchestration**: Kubernetes (Kind) + HPA
 - **Registry**: GitHub Container Registry (GHCR)
-- **Testing**: pytest, httpx, k6
+- **Testing**: pytest, httpx, Gatling (Java DSL)
 - **Security**: Gitleaks, SonarCloud, Trivy, OWASP ZAP
 
 ---

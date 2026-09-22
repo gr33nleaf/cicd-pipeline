@@ -5,14 +5,14 @@ on:
     branches: ['**']
   workflow_dispatch:
 
-permissions: {}  # alle Permissions gesperrt by default
+permissions: {}
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write        # SonarCloud Check-Status
+      checks: write
     steps:
       - name: checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
@@ -63,7 +63,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
-      packages: write      # ghcr.io push
+      packages: write
     steps:
       - name: checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
@@ -91,6 +91,14 @@ jobs:
           sudo mv ./kind /usr/local/bin/kind
           kind create cluster --name kind
           kubectl cluster-info
+
+      - name: install metrics-server
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          kubectl patch deployment metrics-server -n kube-system \
+            --type='json' \
+            -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+          kubectl rollout status deployment/metrics-server -n kube-system --timeout=60s
 
       - name: load image into kind
         run: kind load docker-image ghcr.io/${{ github.repository }}:${{ github.sha }}
@@ -121,13 +129,16 @@ jobs:
           fail_action: false
           allow_issue_writing: false
 
-      - name: performance test
+      - name: set up java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: performance test with gatling
         run: |
-          curl -Lo k6.tar.gz https://github.com/grafana/k6/releases/download/v0.54.0/k6-v0.54.0-linux-amd64.tar.gz
-          tar -xzf k6.tar.gz
-          sudo mv k6-v0.54.0-linux-amd64/k6 /usr/local/bin/k6
           kubectl get hpa random-app-hpa -w &
-          k6 run tests/load_test.js
+          mvn -f gatling/pom.xml gatling:test
 
       - name: rollback on failure
         if: failure() && steps.kind.outcome == 'success'
