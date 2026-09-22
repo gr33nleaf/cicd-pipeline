@@ -25,11 +25,11 @@ public class LoadSimulation extends Simulation {
     {
         setUp(
             loadScenario.injectOpen(
-                nothingFor(5),                         // Warm-up: 5s pause
-                atOnceUsers(30),                       // Spike: 30 simultaneous users
-                rampUsers(20).during(20),              // Ramp-up: 20 users over 20s
-                constantUsersPerSec(30).during(90),    // Sustained load: 30 req/s for 90s
-                rampUsers(250).during(60)              // Peak: 250 users over 60s → HPA-Trigger
+                nothingFor(5),                          // Warm-up: 5s pause
+                atOnceUsers(50),                        // Spike: 50 simultaneous users
+                rampUsers(50).during(20),               // Ramp-up: 50 users over 20s
+                constantUsersPerSec(80).during(90),     // Sustained load: 80 req/s for 90s → HPA-Trigger
+                rampUsers(600).during(60)               // Peak: 600 users over 60s → HPA skaliert
             )
         )
         .protocols(httpProtocol)
