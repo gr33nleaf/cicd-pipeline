@@ -5,4 +5,4 @@ __pycache__/
 coverage.xml
 .venv/
 .scannerwork/
-htmlcov/
+htmlcov/gatling/target/
