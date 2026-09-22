@@ -3,6 +3,10 @@ name: CI/CD Pipeline - Study Case
 on:
   push:
     branches: ['**']
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions: {}
