@@ -8,6 +8,16 @@ on:
       - '*.md'
       - 'docs/**'
   workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment type'
+        required: true
+        default: 'planned'
+        type: choice
+        options:
+          - planned
+          - hotfix
+          - rollback
 
 permissions: {}
 
@@ -177,18 +187,22 @@ jobs:
           COMMIT_TIME=$(git log -1 --format="%ct")
           NOW=$(date +%s)
           LEAD_TIME=$((NOW - COMMIT_TIME))
-          echo "Lead Time for Changes : $((LEAD_TIME / 60))m $((LEAD_TIME % 60))s"
+          echo "Lead Time for Changes           : $((LEAD_TIME / 60))m $((LEAD_TIME % 60))s"
 
-          echo "Deployment Frequency  : 1 deployment ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-          echo "  Branch              : ${{ github.ref_name }}"
-          echo "  Commit              : ${{ github.sha }}"
+          echo "Deployment Frequency            : 1 deployment ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          echo "  Branch                        : ${{ github.ref_name }}"
+          echo "  Commit                        : ${{ github.sha }}"
 
           if [ -n "${TIME_TO_RESTORE}" ]; then
-            echo "Change Failure Rate   : FAILED → Rollback executed"
-            echo "Time to Restore       : ${TIME_TO_RESTORE}s (automatic rollback)"
+            echo "Change Failure Rate             : FAILED → Rollback executed"
+            echo "Failed Deployment Recovery Time : ${TIME_TO_RESTORE}s (automatic rollback)"
           else
-            echo "Change Failure Rate   : SUCCESS (no rollback needed)"
-            echo "Time to Restore       : N/A"
+            echo "Change Failure Rate             : SUCCESS (no rollback needed)"
+            echo "Failed Deployment Recovery Time : N/A"
           fi
+
+          DEPLOYMENT_TYPE="${{ github.event.inputs.deployment_type || 'planned' }}"
+          echo "Deployment Rework Rate          : ${DEPLOYMENT_TYPE}"
+          echo "  (ratio requires historical data across multiple deployments)"
 
           echo "=========================================="
