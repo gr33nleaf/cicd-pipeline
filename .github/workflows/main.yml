@@ -173,9 +173,13 @@ jobs:
         if: failure() && steps.kind.outcome == 'success'
         run: |
           ROLLBACK_START=$(date +%s)
-          kubectl rollout undo deployment/random-app || true
-          ROLLBACK_END=$(date +%s)
-          echo "TIME_TO_RESTORE=$((ROLLBACK_END - ROLLBACK_START))" >> $GITHUB_ENV
+          if kubectl rollout undo deployment/random-app; then
+            ROLLBACK_END=$(date +%s)
+            echo "TIME_TO_RESTORE=$((ROLLBACK_END - ROLLBACK_START))" >> $GITHUB_ENV
+            echo "ROLLBACK_STATUS=success" >> $GITHUB_ENV
+          else
+            echo "ROLLBACK_STATUS=failed" >> $GITHUB_ENV
+          fi
 
       - name: DORA metrics summary
         if: always()
@@ -193,9 +197,12 @@ jobs:
           echo "  Branch                        : ${{ github.ref_name }}"
           echo "  Commit                        : ${{ github.sha }}"
 
-          if [ -n "${TIME_TO_RESTORE}" ]; then
+          if [ "${ROLLBACK_STATUS}" = "success" ]; then
             echo "Change Failure Rate             : FAILED → Rollback executed"
             echo "Failed Deployment Recovery Time : ${TIME_TO_RESTORE}s (automatic rollback)"
+          elif [ "${ROLLBACK_STATUS}" = "failed" ]; then
+            echo "Change Failure Rate             : FAILED → Rollback attempted but failed (no rollout history)"
+            echo "Failed Deployment Recovery Time : N/A"
           else
             echo "Change Failure Rate             : SUCCESS (no rollback needed)"
             echo "Failed Deployment Recovery Time : N/A"
